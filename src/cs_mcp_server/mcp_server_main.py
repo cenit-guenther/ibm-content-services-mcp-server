@@ -89,7 +89,9 @@ def _initialize_mcp_server(server_name: str) -> FastMCP:
     """
     global mcp
     if mcp is None:
-        mcp = FastMCP(server_name)
+        host = os.environ.get("MCP_HOST", "0.0.0.0")
+        port = int(os.environ.get("MCP_PORT", "8000"))
+        mcp = FastMCP(server_name, host=host, port=port)
         logger.info("Initialized MCP server: %s", server_name)
     return mcp
 
@@ -350,7 +352,9 @@ def _run_server(server_type: ServerType) -> None:
         atexit.register(exit_handler)
 
         # Start the MCP server
-        mcp.run(transport="stdio")
+        transport = os.environ.get("MCP_TRANSPORT", "stdio")
+        logger.info("Starting server with transport: %s", transport)
+        mcp.run(transport=transport)
     except KeyboardInterrupt:
         logger.info("Server shutting down")
         # Ensure client is closed on keyboard interrupt

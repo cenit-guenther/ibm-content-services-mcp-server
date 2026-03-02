@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+*.egg-info
+dist/
+build/
+docs/
+CHANGELOG.md
+MAINTAINERS.md
+.env
+.python-version
