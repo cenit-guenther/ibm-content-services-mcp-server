@@ -15,8 +15,11 @@
 import logging
 import traceback
 import re
+import tempfile
+import os
 from typing import Any, List, Optional, Union, Dict
 
+import httpx
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
@@ -270,6 +273,198 @@ def register_document_tools(
             return ToolError(
                 message=f"{method_name} failed: {str(e)}. Trace available in server logs."
             )
+
+    @mcp.tool(
+        name="create_document_from_url",
+    )
+    async def create_document_from_url(
+        url: str,
+        class_identifier: Optional[str] = None,
+        id: Optional[str] = None,
+        document_properties: Optional[DocumentPropertiesInput] = None,
+        file_in_folder_identifier: Optional[str] = None,
+        checkin_action: Optional[SubCheckinActionInput] = SubCheckinActionInput(),
+    ) -> Union[Document, ToolError]:
+        """
+        **PREREQUISITES IN ORDER**: To use this tool, you MUST call two other tools first in a specific sequence.
+        1. determine_class tool to get the class_identifier.
+        2. get_class_property_descriptions to get a list of valid properties for the given class_identifier
+
+        Description:
+        Creates a document in the content repository with content downloaded from a URL.
+        This tool downloads the content from the specified URL to a temporary file,
+        then creates the document with that content.
+
+        :param url: The URL to download content from (required).
+        :param class_identifier: The class identifier for the document. If not provided, defaults to "Document".
+        :param id: The unique GUID for the document. If not provided, a new GUID with curly braces will be generated.
+        :param document_properties: Properties for the document including name, content, mimeType, etc.
+        :param file_in_folder_identifier: The identifier or path of the folder to file the document in. This always starts with "/".
+        :param checkin_action: Check-in action parameters. CheckinMinorVersion should always be included.
+
+        :returns: If successful, returns a Document object with its properties.
+                 If unsuccessful, returns a ToolError with details about the failure.
+        """
+        method_name = "create_document_from_url"
+        temp_file_path = None
+        
+        try:
+            # Download content from URL
+            logger.info("Downloading content from URL: %s", url)
+            
+            async with httpx.AsyncClient(follow_redirects=True, timeout=60.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                
+                # Get filename from URL or Content-Disposition header
+                filename = None
+                if "content-disposition" in response.headers:
+                    import re
+                    cd = response.headers["content-disposition"]
+                    filename_match = re.findall('filename="?([^"]+)"?', cd)
+                    if filename_match:
+                        filename = filename_match[0]
+                
+                if not filename:
+                    # Extract filename from URL
+                    from urllib.parse import urlparse, unquote
+                    parsed_url = urlparse(url)
+                    filename = unquote(os.path.basename(parsed_url.path))
+                    if not filename or filename == "/":
+                        filename = "downloaded_file"
+                
+                # Determine file extension from Content-Type if not in filename
+                if "." not in filename and "content-type" in response.headers:
+                    import mimetypes
+                    content_type = response.headers["content-type"].split(";")[0].strip()
+                    ext = mimetypes.guess_extension(content_type)
+                    if ext:
+                        filename += ext
+                
+                # Create temporary file
+                suffix = os.path.splitext(filename)[1] if "." in filename else ""
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                temp_file_path = temp_file.name
+                temp_file.write(response.content)
+                temp_file.close()
+                
+                logger.info("Downloaded %d bytes to temporary file: %s", len(response.content), temp_file_path)
+                
+                # Set document name if not already set
+                if document_properties is None:
+                    document_properties = DocumentPropertiesInput()
+                
+                if document_properties.name is None:
+                    document_properties.name = filename
+                
+                # Prepare the mutation
+                mutation = """
+                mutation ($object_store_name: String!, $class_identifier: String, $id: ID,
+                         $document_properties: DocumentPropertiesInput, $file_in_folder_identifier: String,
+                         $checkin_action: SubCheckinActionInput) {
+                  createDocument(
+                    repositoryIdentifier: $object_store_name
+                    classIdentifier: $class_identifier
+                    id: $id
+                    documentProperties: $document_properties
+                    fileInFolderIdentifier: $file_in_folder_identifier
+                    checkinAction: $checkin_action
+                  ) {
+                    id
+                    className
+                    properties {
+                      id
+                      value
+                    }
+                  }
+                }
+                """
+                
+                # Prepare variables
+                variables = {
+                    "object_store_name": graphql_client.object_store,
+                    "class_identifier": None,
+                    "id": None,
+                    "document_properties": None,
+                    "file_in_folder_identifier": None,
+                    "checkin_action": None,
+                }
+                
+                # Add optional parameters
+                if class_identifier:
+                    variables["class_identifier"] = class_identifier
+                if id:
+                    variables["id"] = id
+                if file_in_folder_identifier:
+                    variables["file_in_folder_identifier"] = file_in_folder_identifier
+                
+                # Process file content
+                file_paths_dict = {}
+                try:
+                    file_paths_dict = document_properties.process_file_content([temp_file_path])
+                except Exception as e:
+                    logger.error("%s failed: %s", method_name, str(e))
+                    logger.error(traceback.format_exc())
+                    return ToolError(
+                        message=f"{method_name} failed: {str(e)}. Trace available in server logs."
+                    )
+                
+                # Process document properties
+                try:
+                    document_properties.eval()
+                    transformed_props = document_properties.transform_properties_dict(exclude_none=True)
+                    variables["document_properties"] = transformed_props
+                except Exception as e:
+                    logger.error("Error transforming document properties: %s", str(e))
+                    logger.error(traceback.format_exc())
+                    return ToolError(
+                        message=f"{method_name} failed: {str(e)}. Trace available in server logs."
+                    )
+                
+                # Handle checkin action
+                if checkin_action:
+                    variables["checkin_action"] = checkin_action.model_dump(exclude_none=True)
+                
+                # Execute the GraphQL mutation with file upload
+                logger.info("Executing document creation with file upload")
+                response = graphql_client.execute(
+                    query=mutation, variables=variables, file_paths=file_paths_dict
+                )
+                
+                # Handle errors
+                if "errors" in response:
+                    logger.error("GraphQL error: %s", response["errors"])
+                    return ToolError(message=f"{method_name} failed: {response['errors']}")
+                
+                # Create and return a Document instance
+                return Document.create_an_instance(
+                    graphQL_changed_object_dict=response["data"]["createDocument"],
+                    class_identifier=(
+                        class_identifier if class_identifier else DEFAULT_DOCUMENT_CLASS
+                    ),
+                )
+                
+        except httpx.HTTPError as e:
+            logger.error("%s failed: HTTP error downloading from URL: %s", method_name, str(e))
+            logger.error(traceback.format_exc(limit=TRACEBACK_LIMIT))
+            return ToolError(
+                message=f"{method_name} failed: HTTP error downloading from URL: {str(e)}",
+                suggestions=["Check that the URL is accessible", "Verify the URL is correct"]
+            )
+        except Exception as e:
+            logger.error("%s failed: %s", method_name, str(e))
+            logger.error(traceback.format_exc(limit=TRACEBACK_LIMIT))
+            return ToolError(
+                message=f"{method_name} failed: {str(e)}. Trace available in server logs."
+            )
+        finally:
+            # Clean up temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                    logger.info("Cleaned up temporary file: %s", temp_file_path)
+                except Exception as e:
+                    logger.warning("Failed to clean up temporary file %s: %s", temp_file_path, str(e))
 
     @mcp.tool(
         name="update_document_properties",
