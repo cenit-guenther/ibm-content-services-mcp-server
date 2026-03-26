@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Added `create_document_from_url` tool to Core Server for creating documents with content downloaded from URLs
+  - Automatically downloads content from any accessible HTTP/HTTPS URL
+  - Derives document name from URL or Content-Disposition header if not provided
+  - Supports automatic cleanup of temporary files
+  - Uses httpx for async HTTP operations with redirect following and timeouts
+
 ## [1.0.3] - 2026-02-24
 
 ### Added

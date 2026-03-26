@@ -67,15 +67,17 @@ Each server can be deployed independently or in combination to support your spec
 
 ### Core Server Tools
 
-The Core Server provides 26 tools organized into the following categories:
+The Core Server provides 27 tools organized into the following categories:
 
-#### Document Management (11 tools)
+#### Document Management (12 tools)
 
 - **get_document_versions**: Retrieves a document's version history, including major and minor version numbers and document IDs for each version.
 
 - **get_document_text_extract**: Extracts text content from a document by retrieving its text extract annotations. If multiple text extracts are found, they are concatenated. **IMPORTANT:** This functionality requires the Persistent Text Extract add-on to be installed in your object store. See the [Prerequisites](#prerequisites) section for more details.
 
 - **create_document**: Creates a new document in the content repository with specified properties. Can upload files as the document's content if file paths are provided. Requires first calling determine_class and get_class_property_descriptions.
+
+- **create_document_from_url**: Creates a new document in the content repository with content downloaded from a URL. Downloads the file to a temporary location, then creates the document with that content. The document name is automatically derived from the URL or Content-Disposition header if not explicitly provided. Requires first calling determine_class and get_class_property_descriptions.
 
 - **update_document_properties**: Updates an existing document's properties without changing its class. Requires first calling get_class_property_descriptions to get valid properties for the document's current class.
 
