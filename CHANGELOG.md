@@ -7,12 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-03-26
+
 ### Added
 - Added `create_document_from_url` tool to Core Server for creating documents with content downloaded from URLs
   - Automatically downloads content from any accessible HTTP/HTTPS URL
   - Derives document name from URL or Content-Disposition header if not provided
   - Supports automatic cleanup of temporary files
   - Uses httpx for async HTTP operations with redirect following and timeouts
+- Added development and deployment helper scripts: `start-local.sh`, `start-docker-http.sh`, `start-inspector.sh`
+- Added development guides: `AGENTS.md`, `DOCKER_HTTP.md`, `LOCAL_DEV.md`, `QUICK_REFERENCE.md`, `TESTING_GUIDE.md`
+
+### Changed
+- Each MCP server now uses a server-specific HTTP mount path for streamable-http transport:
+  - Core: `/core-cs-mcp-server/mcp`
+  - Legal Hold: `/legal-hold-cs-mcp-server/mcp`
+  - AI Document Insight: `/ai-document-insight-cs-mcp-server/mcp`
+  - Property Extraction & Classification: `/property-extraction-and-classification-cs-mcp-server/mcp`
+- `start-docker-http.sh` now supports all 4 MCP servers via `[server] [port]` arguments
 
 ## [1.0.3] - 2026-02-24
 
