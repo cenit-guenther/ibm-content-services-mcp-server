@@ -18,12 +18,12 @@ cd /home/guenther_d/gitrepos/presales/ibm-content-services-mcp-server
 
 ## Available Servers
 
-| Kurzname     | MCP Server                                              | Default-Port | Endpoint                                     |
-|--------------|---------------------------------------------------------|:------------:|----------------------------------------------|
-| `core`       | `core-cs-mcp-server`                                    | 8000         | `http://localhost:8000/cs-mcp-server/mcp`    |
-| `legal-hold` | `legal-hold-cs-mcp-server`                              | 8001         | `http://localhost:8001/cs-mcp-server/mcp`    |
-| `ai-insight` | `ai-document-insight-cs-mcp-server`                     | 8002         | `http://localhost:8002/cs-mcp-server/mcp`    |
-| `property`   | `property-extraction-and-classification-cs-mcp-server`  | 8003         | `http://localhost:8003/cs-mcp-server/mcp`    |
+| Kurzname     | MCP Server                                              | Default-Port | Endpoint                                                                        |
+|--------------|---------------------------------------------------------|:------------:|---------------------------------------------------------------------------------|
+| `core`       | `core-cs-mcp-server`                                    | 8000         | `http://localhost:8000/core-cs-mcp-server/mcp`                                  |
+| `legal-hold` | `legal-hold-cs-mcp-server`                              | 8001         | `http://localhost:8001/legal-hold-cs-mcp-server/mcp`                            |
+| `ai-insight` | `ai-document-insight-cs-mcp-server`                     | 8002         | `http://localhost:8002/ai-document-insight-cs-mcp-server/mcp`                   |
+| `property`   | `property-extraction-and-classification-cs-mcp-server`  | 8003         | `http://localhost:8003/property-extraction-and-classification-cs-mcp-server/mcp`|
 
 ## Usage
 
@@ -68,7 +68,7 @@ The script:
 ## Configuration
 
 **Transport:** `streamable-http`  
-**Endpoint:** `http://localhost:<port>/cs-mcp-server/mcp`  
+**Endpoint:** `http://localhost:<port>/<server-name>-cs-mcp-server/mcp`  
 **Network:** Host network (Linux) for localhost access
 
 Container names are server-specific: `cs-mcp-server-<kurzname>` (e.g. `cs-mcp-server-legal-hold`).
@@ -239,8 +239,8 @@ After starting the Docker container:
 
 1. **Verify it's running**: `docker ps | grep cs-mcp-server-<kurzname>`
 2. **Check logs**: `docker logs -f cs-mcp-server-<kurzname>`
-3. **Test endpoint**: `curl http://localhost:<port>/cs-mcp-server/mcp`
-4. **Connect MCP client** to `http://localhost:<port>/cs-mcp-server/mcp`
+3. **Test endpoint**: `curl http://localhost:<port>/<server-name>-cs-mcp-server/mcp`
+4. **Connect MCP client** to `http://localhost:<port>/<server-name>-cs-mcp-server/mcp`
 
 ---
 

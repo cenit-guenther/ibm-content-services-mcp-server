@@ -52,6 +52,8 @@ case "$SERVER_SHORT" in
 esac
 
 MCP_PORT="${2:-${MCP_PORT:-$DEFAULT_PORT}}"
+MOUNT_PATH="/${SERVER_CMD}"
+MCP_ENDPOINT="http://localhost:${MCP_PORT}${MOUNT_PATH}/mcp"
 
 # ---------------------------------------------------------------------------
 # Load environment variables from .env.local
@@ -106,7 +108,7 @@ echo ""
 echo "Starting MCP Server in Docker container..."
 echo ""
 echo "The server will be accessible at:"
-echo "  http://localhost:${MCP_PORT}/cs-mcp-server/mcp"
+echo "  ${MCP_ENDPOINT}"
 echo ""
 echo "To view logs: docker logs -f $CONTAINER_NAME"
 echo "To stop:      docker stop $CONTAINER_NAME"
@@ -143,7 +145,7 @@ if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "  docker logs -f $CONTAINER_NAME"
     echo ""
     echo "Test the server:"
-    echo "  curl http://localhost:${MCP_PORT}/cs-mcp-server/mcp"
+    echo "  curl ${MCP_ENDPOINT}"
     echo ""
     echo "Stop the server:"
     echo "  docker stop $CONTAINER_NAME"

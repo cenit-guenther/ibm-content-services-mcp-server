@@ -91,8 +91,10 @@ def _initialize_mcp_server(server_name: str) -> FastMCP:
     if mcp is None:
         host = os.environ.get("MCP_HOST", "0.0.0.0")
         port = int(os.environ.get("MCP_PORT", "8000"))
-        mcp = FastMCP(server_name, host=host, port=port, mount_path="/cs-mcp-server", streamable_http_path="/cs-mcp-server/mcp")
-        logger.info("Initialized MCP server: %s", server_name)
+        mount_path = f"/{server_name}-cs-mcp-server"
+        streamable_http_path = f"{mount_path}/mcp"
+        mcp = FastMCP(server_name, host=host, port=port, mount_path=mount_path, streamable_http_path=streamable_http_path)
+        logger.info("Initialized MCP server: %s (mount_path=%s)", server_name, mount_path)
     return mcp
 
 
